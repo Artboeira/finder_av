@@ -2,3 +2,6 @@ netifaces
 zeroconf
 httpx
 rich
+getmac
+mac-vendor-lookup
+aiodns

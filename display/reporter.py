@@ -15,9 +15,18 @@ ICONS = {
     "Linux/Mac":    "🐧 ",
     "iPhone/iPad":  "📱 ",
     "Android":      "🤖 ",
-    "WLED":         "🌈 ",
-    "Web Device":   "🌐 ",
-    "Desconhecido": "❓ ",
+    "WLED":              "🌈 ",
+    "UPnP Device":       "📡 ",
+    "Smart TV":          "📺 ",
+    "NAS":               "🗄️ ",
+    "Sonos":             "🎵 ",
+    "Streaming Device":  "📺 ",
+    "Chromecast":        "📺 ",
+    "Apple Device":      "🍎 ",
+    "Linux Device":      "🐧 ",
+    "IoT Device (ESP)":  "📟 ",
+    "Web Device":        "🌐 ",
+    "Desconhecido":      "❓ ",
 }
 
 TYPE_COLORS = {
@@ -28,9 +37,18 @@ TYPE_COLORS = {
     "Linux/Mac":    "green",
     "iPhone/iPad":  "magenta",
     "Android":      "bright_green",
-    "WLED":         "bright_magenta",
-    "Web Device":   "white",
-    "Desconhecido": "dim white",
+    "WLED":             "bright_magenta",
+    "UPnP Device":      "bright_cyan",
+    "Smart TV":         "bright_cyan",
+    "NAS":              "bright_cyan",
+    "Sonos":            "bright_cyan",
+    "Streaming Device": "bright_cyan",
+    "Chromecast":       "bright_cyan",
+    "Apple Device":     "magenta",
+    "Linux Device":     "green",
+    "IoT Device (ESP)": "yellow",
+    "Web Device":       "white",
+    "Desconhecido":     "dim white",
 }
 
 
@@ -107,6 +125,14 @@ def render_report(
                     details_parts.append(f"leds={dev.details['leds']}")
                 if dev.details.get("version"):
                     details_parts.append(f"v{dev.details['version']}")
+            elif dev.device_type in ("UPnP Device", "Smart TV", "NAS", "Sonos",
+                                     "Streaming Device", "Chromecast"):
+                if dev.details.get("server"):
+                    details_parts.append(dev.details["server"][:30])
+
+            # Show MAC vendor for all types if present
+            if dev.details.get("vendor") and dev.device_type not in ("Tasmota", "Shelly", "WLED"):
+                details_parts.append(f"vendor={dev.details['vendor'][:20]}")
 
             details_str = ", ".join(details_parts) if details_parts else "—"
 

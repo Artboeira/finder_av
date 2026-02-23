@@ -80,21 +80,24 @@ async def main() -> None:
     from scanner.ping_sweep import ping_sweep
     from scanner.mdns_listener import mdns_listen
     from scanner.artnet_poll import artnet_poll
+    from scanner.ssdp_scanner import ssdp_scan
+    from scanner.mac_lookup import get_mac_vendors
     from scanner.port_scanner import port_scan
-    from identifier.device_classifier import classify
+    from identifier.device_classifier import classify, resolve_hostnames
     from display.reporter import render_report
 
     print("🔍 Iniciando varredura da rede...\n")
 
-    # ── Step 1 + parallel: Ping sweep, mDNS and ArtNet run concurrently ──────
+    # ── Step 1: Ping sweep + mDNS + ArtNet + SSDP in parallel ────────────────
     ping_task   = asyncio.create_task(ping_sweep(subnet=args.subnet))
     mdns_task   = asyncio.create_task(mdns_listen(timeout=args.timeout))
     artnet_task = asyncio.create_task(artnet_poll(timeout=args.artnet_timeout))
+    ssdp_task   = asyncio.create_task(ssdp_scan(timeout=3.0))
 
-    # Ping sweep is the gating task; mDNS and ArtNet run for their own duration
     live_ips, local_ip, subnet = await ping_task
-    mdns_map      = await mdns_task
-    artnet_nodes  = await artnet_task
+    mdns_map     = await mdns_task
+    artnet_nodes = await artnet_task
+    ssdp_map     = await ssdp_task
 
     if not live_ips:
         print("Nenhum host encontrado. Verifique a conectividade de rede.")
@@ -103,13 +106,27 @@ async def main() -> None:
     print(f"  Ping sweep: {len(live_ips)} host(s) encontrado(s)")
     print(f"  mDNS: {len(mdns_map)} nome(s) capturado(s)")
     print(f"  ArtNet: {len(artnet_nodes)} node(s) encontrado(s)")
-    print(f"\n🔎 Identificando dispositivos via port scan...\n")
+    print(f"  SSDP: {len(ssdp_map)} dispositivo(s) UPnP encontrado(s)")
+    print(f"\n🔎 Identificando dispositivos...\n")
 
-    # ── Step 3: Port scan all live IPs ───────────────────────────────────────
-    port_results = await port_scan(live_ips)
+    # ── Step 2: MAC lookup + port scan + DNS resolution in parallel ───────────
+    port_task = asyncio.create_task(port_scan(live_ips))
+    mac_task  = asyncio.create_task(get_mac_vendors(live_ips))
+    dns_task  = asyncio.create_task(resolve_hostnames(live_ips, mdns_map))
 
-    # ── Step 4: Classify ─────────────────────────────────────────────────────
-    devices = classify(live_ips, mdns_map, port_results, artnet_nodes)
+    port_results   = await port_task
+    mac_vendor_map = await mac_task
+    hostname_map   = await dns_task
+
+    print(f"  MAC vendors: {len(mac_vendor_map)} endereço(s) resolvido(s)")
+
+    # ── Step 3: Classify ──────────────────────────────────────────────────────
+    devices = classify(
+        live_ips, mdns_map, port_results, artnet_nodes,
+        ssdp_map=ssdp_map,
+        mac_vendor_map=mac_vendor_map,
+        hostname_map=hostname_map,
+    )
 
     # ── Step 5: Render ───────────────────────────────────────────────────────
     elapsed = time.monotonic() - start_time
