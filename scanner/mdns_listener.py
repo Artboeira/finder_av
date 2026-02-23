@@ -9,6 +9,7 @@ from typing import Dict
 
 SERVICE_TYPES = [
     "_http._tcp.local.",          # Tasmota, Shelly, any web device
+    "_wled._tcp.local.",          # WLED LED controllers
     "_workstation._tcp.local.",   # Linux/Mac workstations
     "_apple-mobdev2._tcp.local.", # iPhones/iPads
     "_androiddebugbridge._tcp.local.",  # Android in debug mode

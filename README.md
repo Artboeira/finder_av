@@ -1,4 +1,4 @@
-# 🎭 Sala Imersiva — Network Scanner
+# TOMOI -  Network Scanner
 
 Descobre e identifica automaticamente todos os dispositivos de uma subnet — dimmers Tasmota, relés Shelly, nodes ArtNet, tablets, computadores — e exibe um relatório visual colorido no terminal.
 

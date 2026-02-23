@@ -73,8 +73,8 @@ def classify(
             ))
             continue
 
-        # Priority 2 — Tasmota/Shelly from HTTP fingerprint
-        if port_info and port_info.device_type in ("Tasmota", "Shelly"):
+        # Priority 2 — Tasmota/Shelly/WLED from HTTP fingerprint
+        if port_info and port_info.device_type in ("Tasmota", "Shelly", "WLED"):
             devices.append(Device(
                 ip=ip,
                 hostname=hostname,
@@ -130,6 +130,8 @@ def _guess_type_from_mdns(name: str) -> str:
         return "Tasmota"
     if "shelly" in name_lower:
         return "Shelly"
+    if "wled" in name_lower:
+        return "WLED"
     if "iphone" in name_lower or "ipad" in name_lower or "apple" in name_lower:
         return "iPhone/iPad"
     if "android" in name_lower:

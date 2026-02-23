@@ -15,6 +15,7 @@ ICONS = {
     "Linux/Mac":    "🐧 ",
     "iPhone/iPad":  "📱 ",
     "Android":      "🤖 ",
+    "WLED":         "🌈 ",
     "Web Device":   "🌐 ",
     "Desconhecido": "❓ ",
 }
@@ -27,6 +28,7 @@ TYPE_COLORS = {
     "Linux/Mac":    "green",
     "iPhone/iPad":  "magenta",
     "Android":      "bright_green",
+    "WLED":         "bright_magenta",
     "Web Device":   "white",
     "Desconhecido": "dim white",
 }
@@ -100,6 +102,11 @@ def render_report(
             elif dev.device_type == "Shelly":
                 if dev.details.get("mac"):
                     details_parts.append(f"mac={dev.details['mac']}")
+            elif dev.device_type == "WLED":
+                if dev.details.get("leds"):
+                    details_parts.append(f"leds={dev.details['leds']}")
+                if dev.details.get("version"):
+                    details_parts.append(f"v{dev.details['version']}")
 
             details_str = ", ".join(details_parts) if details_parts else "—"
 

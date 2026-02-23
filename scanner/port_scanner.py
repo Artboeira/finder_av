@@ -55,6 +55,28 @@ async def _http_get(client, ip: str, path: str) -> Optional[tuple]:
         return None
 
 
+async def _fingerprint_wled(client, ip: str) -> Optional[Dict]:
+    result = await _http_get(client, ip, "/json/info")
+    if result is None:
+        return None
+    status_code, body = result
+    if status_code == 200 and '"brand"' in body:
+        try:
+            import json
+            data = json.loads(body)
+            if data.get("brand") == "WLED":
+                return {
+                    "name": data.get("name"),
+                    "version": data.get("ver"),
+                    "leds": data.get("leds", {}).get("count"),
+                    "mac": data.get("mac"),
+                    "arch": data.get("arch"),
+                }
+        except Exception:
+            return {}
+    return None
+
+
 async def _fingerprint_tasmota(client, ip: str) -> Optional[Dict]:
     result = await _http_get(client, ip, "/cm?cmnd=Status")
     if result is None:
@@ -138,7 +160,15 @@ async def _scan_one(ip: str) -> DeviceInfo:
             if port80_open:
                 info.open_ports.append(80)
 
-                # Try Tasmota first
+                # Try WLED first
+                wled = await _fingerprint_wled(client, ip)
+                if wled is not None:
+                    info.device_type = "WLED"
+                    info.friendly_name = wled.get("name")
+                    info.details = wled
+                    return info
+
+                # Try Tasmota
                 tasmota = await _fingerprint_tasmota(client, ip)
                 if tasmota is not None:
                     info.device_type = "Tasmota"
