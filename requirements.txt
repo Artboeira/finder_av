@@ -5,3 +5,5 @@ rich
 getmac
 mac-vendor-lookup
 aiodns
+# optional: pip install scapy  (requires Npcap on Windows, sudo on Linux/macOS)
+# scapy

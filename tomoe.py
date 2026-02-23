@@ -1,11 +1,14 @@
 """
-Sala Imersiva — Network Scanner
+TOMOE — Network Scanner Toolkit
 Discovers and identifies all devices on the local subnet.
 
 Usage:
-    python main.py
-    python main.py --subnet 192.168.10.0/24
-    python main.py --timeout 10
+    python tomoe.py
+    python tomoe.py --subnet 192.168.10.0/24
+    python tomoe.py --timeout 10
+    python tomoe.py --watch
+    python tomoe.py --sniff
+    python tomoe.py --sniff-only
 """
 
 import argparse
@@ -46,7 +49,7 @@ def print_banner() -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Sala Imersiva — Network Scanner",
+        description="TOMOE — Network Scanner Toolkit",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -68,12 +71,71 @@ def parse_args() -> argparse.Namespace:
         dest="artnet_timeout",
         help="ArtNet poll listen timeout in seconds (default: 2)",
     )
+    parser.add_argument(
+        "--watch",
+        action="store_true",
+        help="After scan, enter continuous watchdog monitor mode",
+    )
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=None,
+        help="Override watchdog check interval in seconds for all devices",
+    )
+    parser.add_argument(
+        "--sniff",
+        action="store_true",
+        help="After scan, enter live DMX sniffer mode (requires scapy)",
+    )
+    parser.add_argument(
+        "--sniff-only",
+        action="store_true",
+        dest="sniff_only",
+        help="Only run DMX sniffer, skip network scan (requires scapy)",
+    )
+    parser.add_argument(
+        "--universe",
+        type=int,
+        default=None,
+        help="Filter sniffer to a specific ArtNet/sACN universe",
+    )
+    parser.add_argument(
+        "--sniff-ip",
+        type=str,
+        default=None,
+        dest="sniff_ip",
+        help="Filter sniffer to packets from a specific source IP",
+    )
     return parser.parse_args()
+
+
+def _run_sniff_mode(known_devices: dict, args: argparse.Namespace) -> None:
+    try:
+        from scanner.packet_sniffer import PacketSniffer
+        from display.sniff_display import run_sniff_display
+    except ImportError:
+        print("\n[erro] scapy não encontrado. Instale: pip install scapy")
+        print("       Windows: instale Npcap em https://npcap.com")
+        print("       Linux/macOS: execute com sudo\n")
+        return
+    sniffer = PacketSniffer()
+    asyncio.run(run_sniff_display(
+        sniffer,
+        known_devices=known_devices,
+        universe_filter=args.universe,
+        ip_filter=args.sniff_ip,
+    ))
 
 
 async def main() -> None:
     print_banner()
     args = parse_args()
+
+    # ── --sniff-only: skip scan entirely ─────────────────────────────────────
+    if args.sniff_only:
+        _run_sniff_mode(known_devices={}, args=args)
+        return
+
     start_time = time.monotonic()
 
     # Lazy imports (so missing optional deps only fail at use time)
@@ -128,9 +190,22 @@ async def main() -> None:
         hostname_map=hostname_map,
     )
 
-    # ── Step 5: Render ───────────────────────────────────────────────────────
+    # ── Step 4: Render ────────────────────────────────────────────────────────
     elapsed = time.monotonic() - start_time
     render_report(devices, local_ip, subnet, elapsed)
+
+    # ── Step 5 (optional): Watch mode ─────────────────────────────────────────
+    if args.watch:
+        from scanner.watchdog import Watchdog
+        from display.watch_display import run_watch_display
+        watchdog = Watchdog(devices, base_interval=args.interval)
+        await run_watch_display(watchdog, local_ip, subnet, start_time)
+        return
+
+    # ── Step 5 (optional): Sniff mode ─────────────────────────────────────────
+    if args.sniff:
+        known = {d.ip: d.friendly_name or d.hostname for d in devices}
+        _run_sniff_mode(known_devices=known, args=args)
 
 
 if __name__ == "__main__":

@@ -117,12 +117,45 @@ def render_report(
             elif dev.device_type == "Tasmota":
                 if dev.details.get("module"):
                     details_parts.append(f"mod={dev.details['module']}")
+                power = dev.details.get("power")
+                if power:
+                    state = power
+                    dimmer = dev.details.get("dimmer")
+                    if dimmer is not None:
+                        state += f" {dimmer}%"
+                    uptime = dev.details.get("uptime")
+                    if uptime:
+                        state += f" | up {uptime}"
+                    details_parts.append(state)
             elif dev.device_type == "Shelly":
                 if dev.details.get("mac"):
                     details_parts.append(f"mac={dev.details['mac']}")
+                ison = dev.details.get("ison")
+                if ison is not None:
+                    sh = ["ON" if ison else "OFF"]
+                    bri = dev.details.get("brightness")
+                    if bri is not None:
+                        sh.append(f"{bri}%")
+                    pw = dev.details.get("power_w")
+                    if pw is not None:
+                        sh.append(f"{pw:.0f}W")
+                    temp = dev.details.get("temp_c")
+                    if temp is not None:
+                        sh.append(f"{temp:.0f}°C")
+                    details_parts.append(" ".join(sh))
             elif dev.device_type == "WLED":
-                if dev.details.get("leds"):
-                    details_parts.append(f"leds={dev.details['leds']}")
+                on = dev.details.get("on")
+                leds = dev.details.get("leds")
+                bri = dev.details.get("bri")
+                if on is not None:
+                    wl = ["ON" if on else "OFF"]
+                    if bri is not None:
+                        wl.append(f"bri={bri}")
+                    if leds:
+                        wl.append(f"{leds}leds")
+                    details_parts.append(" ".join(wl))
+                elif leds:
+                    details_parts.append(f"leds={leds}")
                 if dev.details.get("version"):
                     details_parts.append(f"v{dev.details['version']}")
             elif dev.device_type in ("UPnP Device", "Smart TV", "NAS", "Sonos",

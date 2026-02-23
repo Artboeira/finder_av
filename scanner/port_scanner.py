@@ -114,6 +114,71 @@ async def _fingerprint_shelly(client, ip: str) -> Optional[Dict]:
     return None
 
 
+async def _get_wled_state(client, ip: str) -> Dict:
+    result = await _http_get(client, ip, "/json/state")
+    if result is None:
+        return {}
+    status_code, body = result
+    if status_code != 200:
+        return {}
+    try:
+        import json
+        data = json.loads(body)
+        segs = data.get("seg", [])
+        return {
+            "on": data.get("on"),
+            "bri": data.get("bri"),
+            "fx": segs[0].get("fx") if segs else None,
+            "seg_count": len(segs),
+        }
+    except Exception:
+        return {}
+
+
+async def _get_tasmota_state(client, ip: str) -> Dict:
+    result = await _http_get(client, ip, "/cm?cmnd=Status%200")
+    if result is None:
+        return {}
+    status_code, body = result
+    if status_code != 200:
+        return {}
+    try:
+        import json
+        data = json.loads(body)
+        sts = data.get("StatusSTS", {})
+        st = data.get("Status", {})
+        return {
+            "power": sts.get("POWER"),
+            "dimmer": sts.get("Dimmer"),
+            "uptime": st.get("Uptime"),
+        }
+    except Exception:
+        return {}
+
+
+async def _get_shelly_state(client, ip: str) -> Dict:
+    result = await _http_get(client, ip, "/status")
+    if result is None:
+        return {}
+    status_code, body = result
+    if status_code != 200:
+        return {}
+    try:
+        import json
+        data = json.loads(body)
+        # Gen1 relay/dimmer: top-level ison/brightness, or under lights[]
+        lights = data.get("lights", [{}])
+        src = lights[0] if lights else data
+        return {
+            "ison": src.get("ison", data.get("ison")),
+            "brightness": src.get("brightness", data.get("brightness")),
+            "power_w": data.get("meters", [{}])[0].get("power") if data.get("meters") else None,
+            "temp_c": data.get("tmp", {}).get("tC") if isinstance(data.get("tmp"), dict) else None,
+        }
+    except Exception:
+        return {}
+
+
 async def _get_ssh_banner(ip: str) -> bool:
     """Check if SSH banner is present."""
     try:
@@ -166,6 +231,7 @@ async def _scan_one(ip: str) -> DeviceInfo:
                     info.device_type = "WLED"
                     info.friendly_name = wled.get("name")
                     info.details = wled
+                    info.details.update(await _get_wled_state(client, ip))
                     return info
 
                 # Try Tasmota
@@ -174,6 +240,7 @@ async def _scan_one(ip: str) -> DeviceInfo:
                     info.device_type = "Tasmota"
                     info.friendly_name = tasmota.get("friendly_name")
                     info.details = tasmota
+                    info.details.update(await _get_tasmota_state(client, ip))
                     return info
 
                 # Try Shelly
@@ -182,6 +249,7 @@ async def _scan_one(ip: str) -> DeviceInfo:
                     info.device_type = "Shelly"
                     info.friendly_name = shelly.get("type")
                     info.details = shelly
+                    info.details.update(await _get_shelly_state(client, ip))
                     return info
 
                 # Generic web device
