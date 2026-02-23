@@ -1,7 +1,9 @@
-# TOMOE -  Network Scanner
+# TOMOE -  Network Scanner Toolkit 
 
 Descobre e identifica automaticamente todos os dispositivos de uma subnet — dimmers Tasmota, relés Shelly, nodes ArtNet, tablets, computadores — e exibe um relatório visual colorido no terminal.
 
+For VJ's, light designers, creative tecnologists, artists and nerds 
+ 
 ```
 
                                                         .........                                                         
@@ -50,20 +52,23 @@ Descobre e identifica automaticamente todos os dispositivos de uma subnet — di
                                   ..:::..                                        ..:::..                                  
                                     ..::::..                                  ..:::..                                     
                                        ..::::::..                        ..::::::..                                       
-                                           .:::::::::::... .    ...::::::::::..                                           
-                                                ..:::::::::::::::::::::...                                                
-                                                        ..........                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+                                           .:::::::::::... .    ...::::::::::.. 
+                                                ..:::::::::::::::::::::...    
+                                                        ..........                  
 
- _______ _________ _        ______   _______  _______
-(  ____ \\__   __/( (    /|(  __  \ (  ____ \(  ____ )
-| (    \/   ) (   |  \  ( || (  \  )| (    \/| (    )|
-| (__       | |   |   \ | || |   ) || (__    | (____)|
-|  __)      | |   | (\ \) || |   | ||  __)   |     __)
-| (         | |   | | \   || |   ) || (      | (\ (
-| )      ___) (___| )  \  || (__/  )| (____/\| ) \ \__
-|/       \_______/|/    )_)(______/ (_______/|/   \__/
-
- by Z1t0s
+                                                        
+          __╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲╲╲╲╲╲╲__╱╲╲╲╲╲_____╱╲╲╲__╱╲╲╲╲╲╲╲╲╲╲╲╲_____╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲____╱╲╲╲╲╲╲╲╲╲_____        
+           _╲╱╲╲╲╱╱╱╱╱╱╱╱╱╱╱__╲╱╱╱╱╱╲╲╲╱╱╱__╲╱╲╲╲╲╲╲___╲╱╲╲╲_╲╱╲╲╲╱╱╱╱╱╱╱╱╲╲╲__╲╱╲╲╲╱╱╱╱╱╱╱╱╱╱╱___╱╲╲╲╱╱╱╱╱╱╱╲╲╲___       
+            _╲╱╲╲╲_________________╲╱╲╲╲_____╲╱╲╲╲╱╲╲╲__╲╱╲╲╲_╲╱╲╲╲______╲╱╱╲╲╲_╲╱╲╲╲_____________╲╱╲╲╲_____╲╱╲╲╲___      
+             _╲╱╲╲╲╲╲╲╲╲╲╲╲_________╲╱╲╲╲_____╲╱╲╲╲╱╱╲╲╲_╲╱╲╲╲_╲╱╲╲╲_______╲╱╲╲╲_╲╱╲╲╲╲╲╲╲╲╲╲╲_____╲╱╲╲╲╲╲╲╲╲╲╲╲╱____     
+              _╲╱╲╲╲╱╱╱╱╱╱╱__________╲╱╲╲╲_____╲╱╲╲╲╲╱╱╲╲╲╲╱╲╲╲_╲╱╲╲╲_______╲╱╲╲╲_╲╱╲╲╲╱╱╱╱╱╱╱______╲╱╲╲╲╱╱╱╱╱╱╲╲╲____    
+               _╲╱╲╲╲_________________╲╱╲╲╲_____╲╱╲╲╲_╲╱╱╲╲╲╱╲╲╲_╲╱╲╲╲_______╲╱╲╲╲_╲╱╲╲╲_____________╲╱╲╲╲____╲╱╱╲╲╲___   
+                _╲╱╲╲╲_________________╲╱╲╲╲_____╲╱╲╲╲__╲╱╱╲╲╲╲╲╲_╲╱╲╲╲_______╱╲╲╲__╲╱╲╲╲_____________╲╱╲╲╲_____╲╱╱╲╲╲__  
+                 _╲╱╲╲╲______________╱╲╲╲╲╲╲╲╲╲╲╲_╲╱╲╲╲___╲╱╱╲╲╲╲╲_╲╱╲╲╲╲╲╲╲╲╲╲╲╲╱___╲╱╲╲╲╲╲╲╲╲╲╲╲╲╲╲╲_╲╱╲╲╲______╲╱╱╲╲╲_ 
+                  _╲╱╱╱______________╲╱╱╱╱╱╱╱╱╱╱╱__╲╱╱╱_____╲╱╱╱╱╱__╲╱╱╱╱╱╱╱╱╱╱╱╱_____╲╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱__╲╱╱╱________╲╱╱╱__
+                                                      
+                                                         
+                                                         by Z1t0s *-*   
 ```
 
 ---
@@ -99,13 +104,26 @@ pip install netifaces zeroconf httpx rich
 
 ```bash
 # Detecta subnet automaticamente
-python main.py
+python tomoe.py
 
 # Subnet específica
-python main.py --subnet 192.168.10.0/24
+python tomoe.py --subnet 192.168.10.0/24
 
 # Rede lenta — aumenta timeouts
-python main.py --timeout 10 --artnet-timeout 4
+python tomoe.py --timeout 10 --artnet-timeout 4
+```
+
+### Formas alternativas de executar
+
+```bash
+# Windows — duplo clique ou pelo terminal:
+run.bat
+
+# Linux / Mac:
+chmod +x run.sh && ./run.sh
+
+# Rodar a pasta diretamente (qualquer SO):
+python .
 ```
 
 ### Parâmetros

@@ -22,20 +22,26 @@ def print_banner() -> None:
     except FileNotFoundError:
         return
 
+    lines = text.splitlines()
+    delay = 2.0 / max(len(lines), 1)
+
     try:
         from rich.console import Console
         from rich.text import Text
 
         console = Console()
-        styled = Text(text)
-        styled.stylize("red")
-        for i, line in enumerate(text.splitlines()):
+        for line in lines:
+            styled_line = Text(line)
             if "by Z1t0s" in line:
-                start = sum(len(l) + 1 for l in text.splitlines()[:i])
-                styled.stylize("bold cyan", start, start + len(line))
-        console.print(styled)
+                styled_line.stylize("bold cyan")
+            else:
+                styled_line.stylize("red")
+            console.print(styled_line)
+            time.sleep(delay)
     except ImportError:
-        print(text)
+        for line in lines:
+            print(line)
+            time.sleep(delay)
 
 
 def parse_args() -> argparse.Namespace:
