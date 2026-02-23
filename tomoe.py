@@ -74,7 +74,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--watch",
         action="store_true",
-        help="After scan, enter continuous watchdog monitor mode",
+        help="After scan, enter continuous watchdog monitor mode (default: on)",
     )
     parser.add_argument(
         "--interval",
@@ -85,7 +85,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sniff",
         action="store_true",
-        help="After scan, enter live DMX sniffer mode (requires scapy)",
+        help="After scan, enter live DMX sniffer mode (default: on)",
     )
     parser.add_argument(
         "--sniff-only",
@@ -106,10 +106,22 @@ def parse_args() -> argparse.Namespace:
         dest="sniff_ip",
         help="Filter sniffer to packets from a specific source IP",
     )
+    parser.add_argument(
+        "--iface",
+        type=str,
+        default=None,
+        help="Network interface for sniffer (e.g. eth0, 'Wi-Fi'). Default: all interfaces",
+    )
+    parser.add_argument(
+        "--scan-only",
+        action="store_true",
+        dest="scan_only",
+        help="Only run the network scan, skip watchdog and sniffer",
+    )
     return parser.parse_args()
 
 
-def _run_sniff_mode(known_devices: dict, args: argparse.Namespace) -> None:
+async def _run_sniff_mode(known_devices: dict, args: argparse.Namespace) -> None:
     try:
         from scanner.packet_sniffer import PacketSniffer
         from display.sniff_display import run_sniff_display
@@ -119,21 +131,27 @@ def _run_sniff_mode(known_devices: dict, args: argparse.Namespace) -> None:
         print("       Linux/macOS: execute com sudo\n")
         return
     sniffer = PacketSniffer()
-    asyncio.run(run_sniff_display(
+    await run_sniff_display(
         sniffer,
         known_devices=known_devices,
         universe_filter=args.universe,
         ip_filter=args.sniff_ip,
-    ))
+        iface=args.iface,
+    )
 
 
 async def main() -> None:
     print_banner()
     args = parse_args()
 
+    # ── Default mode: unified watch + sniff (unless a specific mode was chosen)
+    if not args.watch and not args.sniff and not args.sniff_only and not args.scan_only:
+        args.watch = True
+        args.sniff = True
+
     # ── --sniff-only: skip scan entirely ─────────────────────────────────────
     if args.sniff_only:
-        _run_sniff_mode(known_devices={}, args=args)
+        await _run_sniff_mode(known_devices={}, args=args)
         return
 
     start_time = time.monotonic()
@@ -194,7 +212,22 @@ async def main() -> None:
     elapsed = time.monotonic() - start_time
     render_report(devices, local_ip, subnet, elapsed)
 
-    # ── Step 5 (optional): Watch mode ─────────────────────────────────────────
+    # ── Step 5 (optional): Watch + Sniff unified / Watch only / Sniff only ──────
+    if args.watch and args.sniff:
+        from scanner.watchdog import Watchdog
+        from scanner.packet_sniffer import PacketSniffer
+        from display.unified_display import run_unified_display
+        known = {d.ip: d.friendly_name or d.hostname for d in devices}
+        watchdog = Watchdog(devices, base_interval=args.interval)
+        await run_unified_display(
+            watchdog, PacketSniffer(), known,
+            local_ip, subnet, start_time,
+            universe_filter=args.universe,
+            ip_filter=args.sniff_ip,
+            iface=args.iface,
+        )
+        return
+
     if args.watch:
         from scanner.watchdog import Watchdog
         from display.watch_display import run_watch_display
@@ -202,10 +235,9 @@ async def main() -> None:
         await run_watch_display(watchdog, local_ip, subnet, start_time)
         return
 
-    # ── Step 5 (optional): Sniff mode ─────────────────────────────────────────
     if args.sniff:
         known = {d.ip: d.friendly_name or d.hostname for d in devices}
-        _run_sniff_mode(known_devices=known, args=args)
+        await _run_sniff_mode(known_devices=known, args=args)
 
 
 if __name__ == "__main__":

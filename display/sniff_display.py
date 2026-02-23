@@ -38,6 +38,7 @@ def _build_sniff_table(
     universe_filter: Optional[int],
     universe_sources: Dict[int, str],
     universe_protocols: Dict[int, str],
+    local_ips: set,
 ):
     from rich import box
     from rich.console import Group
@@ -51,7 +52,21 @@ def _build_sniff_table(
 
     header = Text(justify="left")
     header.append("📡 TOMOE — DMX SNIFFER", style="bold white")
-    header.append("   ArtNet + sACN   Ctrl+C para sair", style="dim")
+
+    mode = sniffer.get_capture_mode()
+    error = sniffer.get_error()
+    if mode == "scapy":
+        header.append("   ● SCAPY", style="bright_green")
+    elif mode == "socket":
+        header.append("   ● SOCKET", style="yellow")
+        if error:
+            header.append(f"   ({error[:70]})", style="dim red")
+    elif mode == "error":
+        header.append(f"   ● ERRO: {(error or '')[:80]}", style="bright_red")
+    else:
+        header.append("   iniciando...", style="dim")
+
+    header.append("   Ctrl+C para sair", style="dim")
 
     table = Table(
         show_header=True,
@@ -76,9 +91,12 @@ def _build_sniff_table(
             frozen = sniffer.is_frozen(univ)
             proto = universe_protocols.get(univ, "")
             src_ip = universe_sources.get(univ, "?")
-            name = known_devices.get(src_ip)
-            if name:
-                source_cell = f"{src_ip} ({name[:12]})"
+            is_local = src_ip in local_ips
+            if is_local:
+                name = known_devices.get(src_ip) or "esta máquina"
+                source_cell = f"[bright_green]▶ LOCAL — {src_ip} ({name[:14]})[/bright_green]"
+            elif src_ip in known_devices:
+                source_cell = f"{src_ip} ({known_devices[src_ip][:12]})"
             else:
                 source_cell = src_ip
 
@@ -112,6 +130,7 @@ async def run_sniff_display(
     known_devices: Optional[Dict[str, str]] = None,
     universe_filter: Optional[int] = None,
     ip_filter: Optional[str] = None,
+    iface: Optional[str] = None,
 ) -> None:
     known_devices = known_devices or {}
     last_channels: Dict[int, List[int]] = {}
@@ -127,7 +146,10 @@ async def run_sniff_display(
         callback=on_packet,
         universe_filter=universe_filter,
         ip_filter=ip_filter,
+        iface=iface,
     )
+
+    local_ips = sniffer.get_local_ips()
 
     try:
         from rich.live import Live
@@ -137,7 +159,7 @@ async def run_sniff_display(
         with Live(
             _build_sniff_table(
                 sniffer, last_channels, known_devices,
-                universe_filter, universe_sources, universe_protocols,
+                universe_filter, universe_sources, universe_protocols, local_ips,
             ),
             console=console,
             refresh_per_second=5,
@@ -148,7 +170,7 @@ async def run_sniff_display(
                 live.update(
                     _build_sniff_table(
                         sniffer, last_channels, known_devices,
-                        universe_filter, universe_sources, universe_protocols,
+                        universe_filter, universe_sources, universe_protocols, local_ips,
                     )
                 )
     except (KeyboardInterrupt, asyncio.CancelledError):

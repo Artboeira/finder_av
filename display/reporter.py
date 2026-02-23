@@ -78,7 +78,7 @@ def render_report(
 
         # Header panel
         header_text = Text(justify="center")
-        header_text.append("🎭 SALA IMERSIVA — NETWORK SCAN\n", style="bold white")
+        header_text.append("🔍 TOMOE — NETWORK SCAN\n", style="bold white")
         header_text.append(f"Sua máquina: {local_ip}  |  Subnet: {subnet}", style="dim")
         console.print(Panel(header_text, border_style="bright_blue", padding=(0, 2)))
 
@@ -199,7 +199,7 @@ def _render_plain(
 ) -> None:
     width = 70
     print("=" * width)
-    print(f"  SALA IMERSIVA - NETWORK SCAN")
+    print(f"  🔍 TOMOE — NETWORK SCAN")
     print(f"  Maquina: {local_ip}  |  Subnet: {subnet}")
     print("=" * width)
     print(f"  {'IP':<18} {'Tipo':<20} {'Nome':<20}")

@@ -102,38 +102,46 @@ For VJ's, light designers, creative technologists, artists and nerds
 
 | Modo | Flag | Descrição |
 |------|------|-----------|
-| **Scan** | *(padrão)* | Varre a subnet, identifica e exibe todos os dispositivos |
+| **Unificado** | *(padrão)* | Scan + watchdog + sniffer DMX na mesma tela |
 | **Watchdog** | `--watch` | Scan + monitoramento contínuo de status (online/offline) |
 | **Sniffer** | `--sniff` | Scan + monitor de tráfego DMX ao vivo |
-| **Sniffer only** | `--sniff-only` | Apenas sniffer, sem scan de rede |
+| **Sniffer only** | `--sniff-only` | Apenas sniffer DMX, sem scan de rede |
+| **Só scan** | `--no-watch --no-sniff`* | Apenas scan, sem monitoramento |
 
 ---
 
 ## Instalação
 
+### 1. Dependências Python
+
 ```bash
 pip install -r requirements.txt
 ```
 
-Ou manualmente:
+### 2. Npcap (somente Windows)
 
-```bash
-pip install netifaces zeroconf httpx rich getmac mac-vendor-lookup aiodns
+O TOMOE usa **scapy** para captura de pacotes DMX (ArtNet/sACN), que requer o driver Npcap no Windows.
+
+1. Baixe e instale o **[Npcap](https://npcap.com)** (gratuito)
+2. Durante a instalação, marque **"Install Npcap in WinPcap API-compatible Mode"**
+
+### 3. Executar como Administrador
+
+O TOMOE **deve ser executado como Administrador** no Windows (e com `sudo` no Linux/macOS) para:
+- Captura de pacotes DMX (Npcap requer privilégios elevados)
+- Ping sweep sem bloqueio de ICMP
+
+**Windows — clique direito no terminal → "Executar como administrador":**
+```bat
+python tomoe.py
 ```
 
-### Para o modo `--sniff` (opcional)
-
+**Linux / macOS:**
 ```bash
-pip install scapy
+sudo python tomoe.py
 ```
-
-> **Windows:** instale o [Npcap](https://npcap.com) antes do `pip install scapy`.
-> **Linux / macOS:** execute com `sudo` para acesso a raw sockets.
-
----
 
 > **Windows:** o mDNS requer o serviço **Bonjour** instalado (vem junto com iTunes ou Apple Devices).
-> **Ping sweep:** execute como **Administrador** se 0 hosts forem encontrados (ICMP pode ser bloqueado).
 > **`aiodns`** é opcional — se não estiver instalado, o DNS reverso usa fallback síncrono.
 > **`getmac` / `mac-vendor-lookup`** são opcionais — se ausentes, o MAC vendor lookup é silenciosamente ignorado.
 
@@ -141,10 +149,10 @@ pip install scapy
 
 ## Uso
 
-### Scan básico
+### Modo padrão (watchdog + sniffer unificados)
 
 ```bash
-# Detecta subnet automaticamente
+# Execução normal — scan + watchdog + sniffer DMX na mesma tela
 python tomoe.py
 
 # Subnet específica
@@ -154,25 +162,21 @@ python tomoe.py --subnet 192.168.10.0/24
 python tomoe.py --timeout 10 --artnet-timeout 4
 ```
 
-### Watchdog — monitoramento contínuo
+### Watchdog — monitoramento contínuo de dispositivos
 
 ```bash
-# Scan + watchdog com intervalos padrão por tipo de device
+# Só watchdog (sem sniffer)
 python tomoe.py --watch
 
 # Forçar intervalo de 5s para todos os devices
 python tomoe.py --watch --interval 5
-
-# Combinar com subnet específica
-python tomoe.py --subnet 192.168.1.0/24 --watch
 ```
 
-O watchdog exibe uma tabela live (atualizada a cada segundo) com:
+O watchdog exibe uma tabela live com:
 - 🟢 Online com latência em ms
 - 🔴 OFFLINE com tempo desde a última resposta
 - 🟡 Instável (voltou de offline, aguardando próximo check)
 - Alertas de quedas e retornos no rodapé
-- Ctrl+C para sair limpo
 
 Intervalos adaptativos por tipo de device:
 
@@ -182,13 +186,13 @@ Intervalos adaptativos por tipo de device:
 | Web Device, IoT Device (ESP) | 15s (ICMP) |
 | Windows PC, Linux/Mac, iPhone, Android, Desconhecido | 30s (ICMP) |
 
-### Sniffer DMX — tráfego ao vivo
+### Sniffer DMX — tráfego ArtNet/sACN ao vivo
 
 ```bash
-# Sniffer após scan (correlaciona IPs com nomes do scan)
+# Só sniffer (sem watchdog)
 python tomoe.py --sniff
 
-# Só sniffer, sem scan de rede
+# Só sniffer, sem scan de rede (mais rápido para iniciar)
 python tomoe.py --sniff-only
 
 # Filtrar por universo específico
@@ -196,14 +200,25 @@ python tomoe.py --sniff-only --universe 0
 
 # Filtrar por IP de origem
 python tomoe.py --sniff-only --sniff-ip 192.168.1.10
+
+# Filtrar por interface de rede (útil com WiFi + Ethernet simultâneos)
+python tomoe.py --sniff-only --iface "Wi-Fi"
+python tomoe.py --sniff-only --iface "Ethernet"
 ```
 
-O sniffer captura pacotes ArtNet (porta 6454) e sACN/E1.31 (porta 5568) em tempo real, exibindo:
+O sniffer captura pacotes ArtNet (porta 6454) e sACN/E1.31 (porta 5568) em tempo real:
 - Universo, protocolo, IP de origem (com nome se scan foi feito)
+- `▶ LOCAL` em verde para tráfego saindo da própria máquina (ex: Resolume, MadMapper)
 - FPS de pacotes por universo (média dos últimos 2s)
-- Canais ativos e preview visual dos primeiros 16 canais: `█▓░ `
+- Preview visual dos primeiros 16 canais: `█▓░ `
 - Indicador 🔴 FREEZE quando universo parar de receber pacotes por >1s
-- Ctrl+C para sair
+- Indicador de modo de captura: `● SCAPY` (completo) ou `● SOCKET` (fallback, sem admin)
+
+### Só scan (sem monitoramento)
+
+```bash
+python tomoe.py --scan-only
+```
 
 ### Formas alternativas de executar
 
@@ -225,12 +240,16 @@ python .
 | `--subnet` | auto | Subnet a varrer, ex: `192.168.1.0/24` |
 | `--timeout` | `5.0` | Tempo de escuta mDNS em segundos |
 | `--artnet-timeout` | `2.0` | Tempo de escuta ArtNet Poll em segundos |
-| `--watch` | — | Ativa watchdog após o scan |
+| `--watch` | ativo* | Ativa watchdog após o scan |
 | `--interval` | auto | Override do intervalo do watchdog em segundos |
-| `--sniff` | — | Ativa sniffer DMX após o scan |
+| `--sniff` | ativo* | Ativa sniffer DMX após o scan |
 | `--sniff-only` | — | Só sniffer, pula o scan de rede |
+| `--scan-only` | — | Só scan, desativa watchdog e sniffer |
 | `--universe` | — | Filtra sniffer por universo específico |
 | `--sniff-ip` | — | Filtra sniffer por IP de origem |
+| `--iface` | todas | Interface de rede para o sniffer (ex: `"Wi-Fi"`, `eth0`) |
+
+*`--watch` e `--sniff` estão ativos por padrão quando nenhum modo é especificado.
 
 ---
 
@@ -302,14 +321,15 @@ PythonFinder/
 │   ├── artnet_poll.py             # ArtNet Poll UDP broadcast
 │   ├── ssdp_scanner.py            # SSDP/UPnP M-SEARCH (stdlib puro)
 │   ├── mac_lookup.py              # MAC address + vendor OUI lookup
-│   ├── packet_sniffer.py          # DMX sniffer ArtNet/sACN (scapy, opcional)
+│   ├── packet_sniffer.py          # DMX sniffer ArtNet/sACN (scapy + socket fallback)
 │   └── watchdog.py                # Health check contínuo por device
 ├── identifier/
 │   └── device_classifier.py       # Consolida e classifica com prioridade
 └── display/
     ├── reporter.py                # Tabela colorida com rich (scan)
     ├── watch_display.py           # Live table com status watchdog
-    └── sniff_display.py           # Live table com tráfego DMX
+    ├── sniff_display.py           # Live table com tráfego DMX
+    └── unified_display.py         # Watchdog + sniffer combinados (modo padrão)
 ```
 
 ### Fluxo de execução
@@ -333,9 +353,11 @@ Fase 3:
 Fase 4:
    Reporter renderiza tabela colorida no terminal
 
-Fase 5 (opcional):
-   --watch  → Watchdog inicia health checks adaptativos + rich.Live 1s
-   --sniff  → PacketSniffer captura UDP 6454/5568 + rich.Live 200ms
+Fase 5 (padrão: ambos ativos):
+   --watch --sniff  → Unified display: watchdog + sniffer na mesma tela (5fps)
+   --watch          → Só watchdog: health checks adaptativos + rich.Live 1s
+   --sniff          → Só sniffer: PacketSniffer captura UDP 6454/5568 + rich.Live 200ms
+   --scan-only      → Encerra após exibir o relatório
 ```
 
 ### Identificação HTTP + State Enrichment
@@ -363,4 +385,5 @@ Fase 5 (opcional):
 - **Tasmota:** extrai `FriendlyName` e `Module` via `Status`; extrai `POWER`, `Dimmer`, `Uptime` via `Status 0`.
 - **Shelly:** extrai `type` e `mac` via `/shelly`; extrai estado (ison, brightness, W, °C) via `/status`.
 - **Watchdog:** Tasmota/Shelly/WLED usam HTTP health check (mais confiável); demais dispositivos usam ICMP ping.
-- **Sniffer:** captura passiva com scapy — não injeta tráfego na rede. Detecta freeze por ausência de pacotes por >1s.
+- **Sniffer:** dois modos de captura: `● SCAPY` (requer Npcap + admin, captura todo o tráfego incluindo sainte) e `● SOCKET` (fallback automático sem admin, captura tráfego entrante e broadcast). O modo SOCKET é suficiente para monitorar Resolume/MadMapper que enviam para o broadcast da subnet.
+- **Privilégios:** execute sempre como **Administrador** (Windows) ou **sudo** (Linux/macOS) para ativar o modo SCAPY e obter captura completa. Sem privilégios, o TOMOE cai automaticamente para modo SOCKET com aviso visível na tela.
