@@ -23,7 +23,7 @@ def print_banner() -> None:
         return
 
     lines = text.splitlines()
-    delay = 2.0 / max(len(lines), 1)
+    delay = 1.3 / max(len(lines), 1)
 
     try:
         from rich.console import Console

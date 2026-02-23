@@ -2,7 +2,7 @@
 
 Descobre e identifica automaticamente todos os dispositivos de uma subnet — dimmers Tasmota, relés Shelly, nodes ArtNet, tablets, computadores — e exibe um relatório visual colorido no terminal.
 
-For VJ's, light designers, creative tecnologists, artists and nerds 
+For VJ's, light designers, creative technologists, artists and nerds 
  
 ```
 
